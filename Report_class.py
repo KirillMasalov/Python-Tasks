@@ -2,6 +2,8 @@ from DataSet_class import DataSet
 from openpyxl import Workbook
 from openpyxl.styles import Font, Border, Side
 from openpyxl.styles.numbers import FORMAT_PERCENTAGE_00
+import matplotlib.pyplot as plt
+import matplotlib
 
 border = Border(left=Side(border_style='thin', color='FF000000'),
                 right=Side(border_style='thin', color='FF000000'),
@@ -67,3 +69,53 @@ class Report:
                 cell.border = self.__border
                 if cell.column == 5:
                     cell.number_format = FORMAT_PERCENTAGE_00
+
+    def generate_image(self, data:DataSet, salaries_by_town: dict, rates_by_town: dict, current_vacancy_name: str):
+        matplotlib.rc('xtick', labelsize=8)
+        matplotlib.rc('xtick', labelsize=8)
+        plt.figure(figsize=(100, 100))
+        fig, axs = plt.subplots(2, 2)
+
+        self.__generate_salary_by_year_graph(data, axs,current_vacancy_name)
+        self.__generate_count_by_year_graph(data, axs, current_vacancy_name)
+        self.__generate_salary_by_town_graph(salaries_by_town, axs)
+        self.__generate_rates_by_town_graph(rates_by_town, axs)
+
+        fig.tight_layout()
+        fig.savefig('graph.png')
+
+    def __generate_salary_by_year_graph(self, data: DataSet, axs, current_vacancy_name):
+        x = list(map(lambda year: int(year), data.salaries_by_year.keys()))
+        axs[0, 0].bar(list(map(lambda c: c - 0.35, x)), data.salaries_by_year.values(), width=0.35, label="средняя з/п")
+        axs[0, 0].bar(x, data.current_salaries_by_year.values(), width=0.35, label="з/п " + current_vacancy_name)
+        axs[0, 0].set_title('Уровень зарплат по годам')
+        axs[0, 0].set_xticks(x, data.salaries_by_year.keys(), rotation=90, fontsize=8)
+        axs[0, 0].legend(fontsize=8)
+        axs[0, 0].grid(axis='y')
+
+    def __generate_count_by_year_graph(self, data: DataSet, axs, current_vacancy_name):
+        x = list(map(lambda year: int(year), data.vacancies_count_by_year.keys()))
+        axs[0, 1].bar(list(map(lambda c: c - 0.35, x)), data.vacancies_count_by_year.values(),
+                      width=0.35, label="Количество вакансий")
+        axs[0, 1].bar(x, data.current_count_by_year.values(),
+                      width=0.35, label="Количество вакансий " + current_vacancy_name)
+        axs[0, 1].set_title('Количество вакансий по годам')
+        axs[0, 1].set_xticks(x, data.vacancies_count_by_year.keys(), rotation=90, fontsize=8)
+        axs[0, 1].legend(fontsize=8)
+        axs[0, 1].grid(axis='y')
+
+    def __generate_salary_by_town_graph(self, salaries_by_town, axs):
+        x = list(map(lambda town: town.replace(" ", "\n").replace("-", "-\n"), salaries_by_town.keys()))
+        axs[1, 0].barh(x, salaries_by_town.values(), align='center')
+        axs[1, 0].set_title('Уровень зарплат по городам')
+        axs[1, 0].set_yticks(range(10))
+        axs[1, 0].set_yticklabels(x, fontsize=6)
+        axs[1, 0].grid(axis='x')
+        axs[1, 0].invert_yaxis()
+
+    def __generate_rates_by_town_graph(self, rates_by_town, axs):
+        values = [1 - sum(rates_by_town.values())] + list(rates_by_town.values())
+        labels = ["Другие"] + list(rates_by_town.keys())
+        params_tuple = axs[1, 1].pie(values, labels=labels)
+        axs[1, 1].set_title('Доля вакансий по городам')
+        [_.set_fontsize(6) for _ in params_tuple[1]]
