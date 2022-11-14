@@ -14,5 +14,8 @@ sorted_salaries_by_town = dict(sorted(data.salaries_by_town.items(), key=lambda 
 sorted_vacancies_by_rate = dict(sorted(data.vacancies_rate_by_town.items(),
                                        key=lambda item: item[1], reverse=True)[0:10])
 
+
 report = Report()
+report.generate_excel(data, sorted_salaries_by_town, sorted_vacancies_by_rate, current_vacancy_name)
 report.generate_image(data, sorted_salaries_by_town, sorted_vacancies_by_rate, current_vacancy_name)
+report.generate_pdf(current_vacancy_name, "graph.png", "report.xlsx")

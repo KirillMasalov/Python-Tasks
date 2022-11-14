@@ -4,6 +4,9 @@ from openpyxl.styles import Font, Border, Side
 from openpyxl.styles.numbers import FORMAT_PERCENTAGE_00
 import matplotlib.pyplot as plt
 import matplotlib
+from jinja2 import Environment, FileSystemLoader
+import pdfkit
+import openpyxl
 
 border = Border(left=Side(border_style='thin', color='FF000000'),
                 right=Side(border_style='thin', color='FF000000'),
@@ -119,3 +122,50 @@ class Report:
         params_tuple = axs[1, 1].pie(values, labels=labels)
         axs[1, 1].set_title('Доля вакансий по городам')
         [_.set_fontsize(6) for _ in params_tuple[1]]
+
+    def generate_pdf(self, current_vacancy_name, image_file, tables_file):
+        env = Environment(loader=FileSystemLoader('.'))
+        template = env.get_template("pdf_template.html")
+
+        xfile = openpyxl.load_workbook(tables_file)
+        years_headlines, years_values, towns_salaries_headlines,\
+            towns_rates_headlines, towns_salaries_values, towns_rates_values = [], [], [], [], [], []
+
+        years_table = xfile["Статистика по годам"]
+        years_headlines = years_table[1]
+        years_values = [row for row in years_table if row != years_table[1]]
+
+        self.__fill_towns_table(xfile, towns_salaries_headlines, towns_rates_headlines,
+                                towns_salaries_values, towns_rates_values)
+
+        pdf_template = template.render({'vacancy_name': current_vacancy_name, 'image_file': image_file,
+                                        'years_headlines': years_headlines, 'years_values': years_values,
+                                        'towns_salaries_headlines': towns_salaries_headlines,
+                                        'towns_salaries_values': towns_salaries_values,
+                                        'towns_rates_headlines': towns_rates_headlines,
+                                        'towns_rates_values': towns_rates_values})
+        config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+        options = {'enable-local-file-access': None}
+        pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options=options)
+
+    def __fill_towns_table(self, xfile, towns_salaries_headlines,
+                           towns_rates_headlines, towns_salaries_values, towns_rates_values):
+        town_table = xfile["Статистика по городам"]
+        for row in town_table:
+            salaries_value_row = []
+            rates_value_row = []
+            for cell in row:
+                if cell.row == 1:
+                    if cell.column == 1 or cell.column == 2:
+                        towns_salaries_headlines.append(cell)
+                    elif cell.column == 4 or cell.column == 5:
+                        towns_rates_headlines.append(cell)
+                else:
+                    if cell.column == 1 or cell.column == 2:
+                        salaries_value_row.append(cell)
+                    elif cell.column == 4 or cell.column == 5:
+                        rates_value_row.append(cell)
+            if len(salaries_value_row) != 0:
+                towns_salaries_values.append(salaries_value_row)
+            if len(rates_value_row) != 0:
+                towns_rates_values.append(rates_value_row)
